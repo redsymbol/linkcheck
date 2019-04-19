@@ -60,12 +60,14 @@ class Domain:
 
     '''
     netloc: str
-    def __init__(self, netloc: str):
-        assert not '://' in netloc, f'invalid netloc: {netloc}'
+    def __init__(self, default_scheme: str, netloc: str):
+        assert not '://' in default_scheme, f'invalid netloc: {default_scheme}'
+        self.default_scheme = default_scheme
         self.netloc = netloc
     @classmethod
     def from_url(cls, url):
-        return cls(urlparse(url).netloc)
+        parts = urlparse(url)
+        return cls(parts.scheme, parts.netloc)
     def url_in_domain(self, url):
         return self.netloc == urlparse(url).netloc
 
@@ -86,9 +88,18 @@ class Page:
         return self.response.status_code >= 200 and self.response.status_code < 300
     def urls(self, domain):
         assert self.url_is_valid()
-        for url in self.extract_raw_urls(self.response.text):
-            if domain.url_in_domain(url):
-                yield url
+        yield from self.extract_urls(self.extract_raw_urls(self.response.text), self.domain)
+    @staticmethod
+    def extract_urls(raw_urls, domain):
+        for url in raw_urls:
+            if url.startswith('http://') or url.startswith('https://'):
+                if domain.url_in_domain(url):
+                    yield url
+            elif url.startswith('/'):
+                yield f'{domain.default_scheme}://{domain.netloc}{url}'
+            else:
+                assert False, 'case not supported yet: ' + url
+                    
     @staticmethod
     def extract_raw_urls(text):
         tree = lxml.html.document_fromstring(text)
