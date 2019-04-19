@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import argparse
 import typing
 from urllib.parse import urlparse
@@ -54,7 +56,7 @@ class Domain:
         self.default_scheme = default_scheme
         self.netloc = netloc
     @classmethod
-    def from_url(cls, url: str) -> 'Domain':
+    def from_url(cls, url: str) -> Domain:
         parts = urlparse(url)
         return cls(parts.scheme, parts.netloc)
     def url_in_domain(self, url: str) -> bool:
