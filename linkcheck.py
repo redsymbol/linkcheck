@@ -63,7 +63,7 @@ class Links:
     def add(self, link: str) -> None:
         'Add an unchecked link'
         self.all.add(link)
-    def add_many(self, links: typing.Sequence[str]) -> None:
+    def add_many(self, links: typing.Iterator[str]) -> None:
         'Add many unchecked links'
         for link in links:
             self.add(link)
@@ -91,11 +91,11 @@ class Page:
     def url_is_valid(self) -> bool:
         return self.response.status_code >= 200 and self.response.status_code < 300
     
-    def urls(self, domain: Domain) -> typing.Iterator[str]:
+    def urls(self, domain: Domain) -> typing.Generator[str, None, None]:
         assert self.url_is_valid()
         yield from self.extract_urls(self.extract_hrefs(self.response.text))
 
-    def normalize_url(self, href: str) -> str:
+    def normalize_url(self, href: str) -> typing.Optional[str]:
         '''
         Return a full URL from the href, based on the current page URL.
 
@@ -120,7 +120,7 @@ class Page:
                 href = '/' + href
             return self.url + href
 
-    def extract_urls(self, hrefs: typing.Sequence[str]) -> typing.Sequence[str]:
+    def extract_urls(self, hrefs: typing.Iterator[str]) -> typing.Generator[str, None, None]:
         for href in hrefs:
             if self.is_full_url(href):
                 if self.domain.url_in_domain(href):
@@ -137,7 +137,7 @@ class Page:
         return url.startswith('http://') or url.startswith('https://')
     
     @staticmethod
-    def extract_hrefs(text: str) -> typing.Iterator[str]:
+    def extract_hrefs(text: str) -> typing.Generator[str, None, None]:
         tree = lxml.html.document_fromstring(text)
         for elem in tree.cssselect('a'):
             if 'href' in elem.attrib:
@@ -152,7 +152,7 @@ class Report:
     def print(self) -> None:
         for url in sorted(self.bad_urls):
             print(url)
-    def exit_code(self) -> None:
+    def exit_code(self) -> int:
         return 0 if len(self.bad_urls) == 0 else 1
 
 if __name__ == '__main__':
