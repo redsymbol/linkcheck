@@ -3,7 +3,17 @@
 import argparse
 import typing
 from urllib.parse import urlparse
+import os
+import logging
+import sys
+
+import requests
 import lxml.html
+
+logging.basicConfig(
+    format='%(levelname)s:%(asctime)s:%(message)s',
+    level = os.environ.get('LINKCHECK_LOGLEVEL', 'WARNING'),
+    )
 
 def get_args():
     parser = argparse.ArgumentParser(
@@ -61,6 +71,7 @@ class Domain:
 class Page:
     def __init__(self, url):
         self.url = url
+        self._resp = None
     @property
     def response(self):
         if self._resp is None:
@@ -72,9 +83,9 @@ class Page:
         return self.response.status_code >= 200 and self.response.status_code < 300
     def urls(self, domain):
         assert self.url_is_valid()
-        tree = lxml.htmldocument_fromstring(self.response.text)
+        tree = lxml.html.document_fromstring(self.response.text)
         for elem in tree.cssselect('a'):
-            url = a.get('href', None)
+            url = elem.get('href', None)
             if domain.url_in_domain(url):
                 yield url
 
@@ -91,7 +102,7 @@ class Report:
 
 if __name__ == '__main__':
     args = get_args()
-    links = Link()
+    links = Links()
     links.add(args.url)
     domain = Domain(args.url)
     report = Report()
@@ -100,6 +111,7 @@ if __name__ == '__main__':
         page = Page(url)
         logging.debug('Checking url: %s', url)
         if page.url_is_valid():
+            logging.debug('found new urls: %s', list(page.urls(domain)))
             links.add_many(page.urls(domain))
         else:
             logging.debug('Invalid url: %s', url)
