@@ -61,6 +61,8 @@ class Domain:
         return self.netloc == urlparse(url).netloc
 
 class Links:
+    all: set
+    checked: set
     def __init__(self):
         self.all = set()
         self.checked = set()
