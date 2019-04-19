@@ -31,6 +31,23 @@ It's designed for CI pipelines, and other forms of devops/sysadmin automation.
                         help='Base URL to begin search')
     return parser.parse_args()
 
+class Domain:
+    '''
+    Represents a single website domain name
+
+    '''
+    netloc: str
+    def __init__(self, default_scheme: str, netloc: str):
+        assert not '://' in default_scheme, f'invalid netloc: {default_scheme}'
+        self.default_scheme = default_scheme
+        self.netloc = netloc
+    @classmethod
+    def from_url(cls, url: str) -> 'Domain':
+        parts = urlparse(url)
+        return cls(parts.scheme, parts.netloc)
+    def url_in_domain(self, url: str) -> bool:
+        return self.netloc == urlparse(url).netloc
+
 class Links:
     def __init__(self):
         self.all = set()
@@ -54,45 +71,31 @@ class Links:
         'True iff there are no unchecked links left'
         return len(self.unchecked) == 0
     
-class Domain:
-    '''
-    Represents a single website domain name
-
-    '''
-    netloc: str
-    def __init__(self, default_scheme: str, netloc: str):
-        assert not '://' in default_scheme, f'invalid netloc: {default_scheme}'
-        self.default_scheme = default_scheme
-        self.netloc = netloc
-    @classmethod
-    def from_url(cls, url):
-        parts = urlparse(url)
-        return cls(parts.scheme, parts.netloc)
-    def url_in_domain(self, url):
-        return self.netloc == urlparse(url).netloc
-
 class Page:
+    url: str
+    domain: Domain
+    _resp: requests.Response
     def __init__(self, url, domain):
         assert domain.url_in_domain(url), (url, domain.netloc)
         self.url = url
         self.domain = domain
         self._resp = None
     @property
-    def response(self):
+    def response(self) -> requests.Response:
         if self._resp is None:
             logging.info('Fetching url: %s', url)
             self._resp = requests.get(url)
             logging.debug('Status code for url: %d %s', self._resp.status_code, url)
         return self._resp
     
-    def url_is_valid(self):
+    def url_is_valid(self) -> bool:
         return self.response.status_code >= 200 and self.response.status_code < 300
     
-    def urls(self, domain):
+    def urls(self, domain: Domain) -> typing.Iterator[str]:
         assert self.url_is_valid()
         yield from self.extract_urls(self.extract_hrefs(self.response.text))
 
-    def normalize_url(self, href):
+    def normalize_url(self, href: str) -> str:
         '''
         Return a full URL from the href, based on the current page URL.
 
@@ -117,7 +120,7 @@ class Page:
                 href = '/' + href
             return self.url + href
 
-    def extract_urls(self, hrefs):
+    def extract_urls(self, hrefs: typing.Sequence[str]) -> typing.Sequence[str]:
         for href in hrefs:
             if self.is_full_url(href):
                 if self.domain.url_in_domain(href):
@@ -130,25 +133,26 @@ class Page:
             yield url
 
     @staticmethod
-    def is_full_url(url):
+    def is_full_url(url: str) -> bool:
         return url.startswith('http://') or url.startswith('https://')
     
     @staticmethod
-    def extract_hrefs(text):
+    def extract_hrefs(text: str) -> typing.Iterator[str]:
         tree = lxml.html.document_fromstring(text)
         for elem in tree.cssselect('a'):
             if 'href' in elem.attrib:
                 yield elem.attrib['href']
 
 class Report:
+    bad_urls: set
     def __init__(self):
         self.bad_urls = set()
-    def add_bad(self, url):
+    def add_bad(self, url: str) -> None:
         self.bad_urls.add(url)
-    def print(self):
+    def print(self) -> None:
         for url in sorted(self.bad_urls):
             print(url)
-    def exit_code(self):
+    def exit_code(self) -> None:
         return 0 if len(self.bad_urls) == 0 else 1
 
 if __name__ == '__main__':
