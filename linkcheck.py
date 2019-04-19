@@ -80,7 +80,7 @@ class Page:
     @property
     def response(self):
         if self._resp is None:
-            logging.debug('Fetching url: %s', url)
+            logging.info('Fetching url: %s', url)
             self._resp = requests.get(url)
             logging.debug('Status code for url: %d %s', self._resp.status_code, url)
         return self._resp
@@ -96,8 +96,9 @@ class Page:
         '''
         Return a full URL from the href, based on the current page URL.
 
-        Returns None no such valid URL exists. Cases include:
+        Returns None no such valid URL exists, or otherwise we'd want to skip. Cases include:
          - mailto: links
+         - urls that already have a #fragment
         '''
         def is_skippable(url):
             return url.lower().startswith('mailto:')
@@ -108,11 +109,9 @@ class Page:
         elif is_skippable(href):
             return None
         elif href.startswith('#'):
-            url = self.url
-            if '#' in url:
-                pos = url.rfind('#')
-                url = url[0:pos]
-            return url + href
+            if '#' in self.url:
+                return None # don't need to re-check urls with different fragments
+            return self.url + href
         else:
             if not self.url.endswith('/'):
                 href = '/' + href
