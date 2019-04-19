@@ -86,11 +86,11 @@ class Page:
         return self.response.status_code >= 200 and self.response.status_code < 300
     def urls(self, domain):
         assert self.url_is_valid()
-        for url in self.extract_urls(self.response.text):
+        for url in self.extract_raw_urls(self.response.text):
             if domain.url_in_domain(url):
                 yield url
     @staticmethod
-    def extract_urls(text):
+    def extract_raw_urls(text):
         tree = lxml.html.document_fromstring(text)
         for elem in tree.cssselect('a'):
             if 'href' in elem.attrib:

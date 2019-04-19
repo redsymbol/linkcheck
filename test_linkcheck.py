@@ -35,7 +35,7 @@ class TestDomain:
         assert not domain.url_in_domain('https://example.com/about')
         
 class TestPage:
-    def test_extract_urls(self):
+    def test_extract_raw_urls(self):
         text = '''
         <html><body>
         <p>Here is <a href="https://example.com/a">a link</a></p>
@@ -51,6 +51,6 @@ class TestPage:
             'https://example.com/a',
             'https://example.com/b',
             ]
-        assert expected == sorted(linkcheck.Page.extract_urls(text))
+        assert expected == sorted(linkcheck.Page.extract_raw_urls(text))
         
     
