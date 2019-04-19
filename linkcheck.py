@@ -8,7 +8,7 @@ import logging
 import sys
 
 import requests
-import lxml.html
+import lxml.html # type: ignore
 
 logging.basicConfig(
     format='%(levelname)s:%(asctime)s:%(message)s',
