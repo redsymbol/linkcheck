@@ -82,4 +82,6 @@ class TestPage:
         # skip mailto links
         assert None == page.normalize_url('mailto:a@example.com')
 
+        # handle fragments
+        assert 'https://example.com/start#another' == page.normalize_url('#another')
         

@@ -108,7 +108,11 @@ class Page:
         elif is_skippable(href):
             return None
         elif href.startswith('#'):
-            return self.url + href
+            url = self.url
+            if '#' in url:
+                pos = url.rfind('#')
+                url = url[0:pos]
+            return url + href
         else:
             if not self.url.endswith('/'):
                 href = '/' + href
