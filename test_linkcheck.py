@@ -55,17 +55,18 @@ class TestPage:
         assert expected == sorted(linkcheck.Page.extract_raw_urls(text))
 
     def test_extract_urls(self):
+        domain = linkcheck.Domain.from_url('https://example.com')
+        page = linkcheck.Page('https://example.com/start', domain)
         raw_urls = [
             '/c',
             '/d',
             'https://notyourdomain.com/a',
             'https://example.com/b',
         ]
-        domain = linkcheck.Domain.from_url('https://example.com')
         expected = [
             'https://example.com/b',
             'https://example.com/c',
             'https://example.com/d',
         ]
-        actual = sorted(linkcheck.Page.extract_urls(raw_urls, domain))
+        actual = sorted(page.extract_urls(raw_urls))
         assert expected == actual

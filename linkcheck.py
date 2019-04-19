@@ -84,23 +84,25 @@ class Page:
             self._resp = requests.get(url)
             logging.debug('Status code for url: %d %s', self._resp.status_code, url)
         return self._resp
+    
     def url_is_valid(self):
         return self.response.status_code >= 200 and self.response.status_code < 300
+    
     def urls(self, domain):
         assert self.url_is_valid()
-        yield from self.extract_urls(self.extract_raw_urls(self.response.text), self.domain)
-    @staticmethod
-    def extract_urls(raw_urls, domain):
+        yield from self.extract_urls(self.extract_raw_urls(self.response.text))
+
+    def extract_urls(self, raw_urls):
         def is_full_url(url):
             return url.startswith('http://') or url.startswith('https://')
         def is_skippable(url):
             return url.lower().startswith('mailto:')
         for url in raw_urls:
             if is_full_url(url):
-                if domain.url_in_domain(url):
+                if self.domain.url_in_domain(url):
                     yield url
             elif url.startswith('/'):
-                yield f'{domain.default_scheme}://{domain.netloc}{url}'
+                yield f'{self.domain.default_scheme}://{self.domain.netloc}{url}'
             elif is_skippable(url):
                 logging.debug('Skipping url: %s', url)
                 continue
