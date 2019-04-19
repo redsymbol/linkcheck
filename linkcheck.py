@@ -61,6 +61,7 @@ class Domain:
     '''
     netloc: str
     def __init__(self, netloc: str):
+        assert not '://' in netloc, f'invalid netloc: {netloc}'
         self.netloc = netloc
     @classmethod
     def from_url(cls, url):
@@ -69,8 +70,10 @@ class Domain:
         return self.netloc == urlparse(url).netloc
 
 class Page:
-    def __init__(self, url):
+    def __init__(self, url, domain):
+        assert domain.url_in_domain(url), (url, domain.netloc)
         self.url = url
+        self.domain = domain
         self._resp = None
     @property
     def response(self):
@@ -108,11 +111,11 @@ if __name__ == '__main__':
     args = get_args()
     links = Links()
     links.add(args.url)
-    domain = Domain(args.url)
+    domain = Domain.from_url(args.url)
     report = Report()
     while not links.empty():
         url = links.pop()
-        page = Page(url)
+        page = Page(url, domain)
         logging.debug('Checking url: %s', url)
         if page.url_is_valid():
             logging.debug('found new urls: %s', list(page.urls(domain)))
