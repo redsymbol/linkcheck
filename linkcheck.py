@@ -23,12 +23,24 @@ def get_args():
 Linkcheck is a command-line tool for finding broken links in a website.
 
 It's designed for CI pipelines, and other forms of devops/sysadmin automation.
+
+The program's exit code will be:
+ - 0 if all detected links are valid
+ - 1 if at least one detected link is invalid
+ - 2+ on some other error.
+
+In quiet mode (the default), linkcheck prints out the URLs of any
+detected broken links - one per line. If no broken links are found,
+there is no output.  In verbose mode (-v or --verbose options), both
+healthy and broken links are printed out, under different headers.
         
         '''.strip(),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         )
     parser.add_argument('url',
                         help='Base URL to begin search')
+    parser.add_argument('-v', '--verbose', default=False, action='store_true',
+                        help='More verbose output')
     return parser.parse_args()
 
 class Domain:
@@ -145,22 +157,35 @@ class Page:
 
 class Report:
     bad_urls: set
-    def __init__(self):
+    def __init__(self, links: Links):
+        self.links = links
         self.bad_urls = set()
     def add_bad(self, url: str) -> None:
         self.bad_urls.add(url)
-    def print(self) -> None:
-        for url in sorted(self.bad_urls):
-            print(url)
+    def print(self, verbose: bool) -> None:
+        if verbose:
+            self._print_verbose()
+        else:
+            self._print_quiet()
     def exit_code(self) -> int:
         return 0 if len(self.bad_urls) == 0 else 1
+    def _print_quiet(self):
+        for url in sorted(self.bad_urls):
+            print(url)
+    def _print_verbose(self):
+        print('GOOD LINKS:')
+        for url in sorted(self.links.all):
+            print(url)
+        print('\nBAD LINKS:')
+        for url in sorted(self.bad_urls):
+            print(url)
 
 if __name__ == '__main__':
     args = get_args()
     links = Links()
     links.add(args.url)
     domain = Domain.from_url(args.url)
-    report = Report()
+    report = Report(links)
     while not links.empty():
         url = links.pop()
         page = Page(url, domain)
@@ -172,5 +197,5 @@ if __name__ == '__main__':
             logging.debug('Invalid url: %s', url)
             report.add_bad(url)
 
-    report.print()
+    report.print(args.verbose)
     sys.exit(report.exit_code())
