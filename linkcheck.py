@@ -119,20 +119,24 @@ class Page:
         '''
         def is_skippable(url):
             return url.lower().startswith('mailto:')
+        def drop_fragment(url):
+            pos = url.find('#')
+            if pos > 0:
+                return url[:pos]
+            return url
         if self.is_full_url(href):
-            return href
+            return drop_fragment(href)
         elif href.startswith('/'):
-            return f'{self.domain.default_scheme}://{self.domain.netloc}{href}'
+            return drop_fragment(f'{self.domain.default_scheme}://{self.domain.netloc}{href}')
         elif is_skippable(href):
             return None
         elif href.startswith('#'):
-            if '#' in self.url:
-                return None # don't need to re-check urls with different fragments
-            return self.url + href
+            # drop fragments
+            return None
         else:
             if not self.url.endswith('/'):
                 href = '/' + href
-            return self.url + href
+            return drop_fragment(self.url + href)
 
     def extract_urls(self, hrefs: typing.Iterator[str]) -> typing.Generator[str, None, None]:
         for href in hrefs:

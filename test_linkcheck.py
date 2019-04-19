@@ -70,18 +70,17 @@ class TestPage:
             'https://example.com/c',
             'https://example.com/d',
             'https://example.com/start/x',
-            'https://example.com/start#foo',
         ])
         actual = sorted(page.extract_urls(hrefs))
         assert expected == actual
 
     def test_normalize_url(self):
         domain = linkcheck.Domain.from_url('https://example.com')
-        page = linkcheck.Page('https://example.com/start#something', domain)
+        page = linkcheck.Page('https://example.com/start', domain)
 
         # skip mailto links
         assert None == page.normalize_url('mailto:a@example.com')
-
-        # do not need to re-check with new fragment
-        assert None == page.normalize_url('#another')
         
+        # drop fragments
+        assert None == page.normalize_url('#another')
+        assert 'https://www2.example.com/something' == page.normalize_url('https://www2.example.com/something#else')
