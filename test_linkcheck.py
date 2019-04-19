@@ -41,15 +41,15 @@ class TestPage:
         <p>Here is <a href="https://example.com/a">a link</a></p>
         <ul>
         <li><a href="https://example.com/b">Link 2</a></li>
-        <li><a href="https://example.com/c">Link 3</a></li>
-        <li><a href="https://example.com/d">Link 4</a></li>
+        <li><a href="/c">Link 3</a></li>
+        <li><a href="d">Link 4</a></li>
         </ul></body></html>
         '''.strip()
         expected = [
+            '/c',
+            'd',
             'https://example.com/a',
             'https://example.com/b',
-            'https://example.com/c',
-            'https://example.com/d',
             ]
         assert expected == sorted(linkcheck.Page.extract_urls(text))
         
