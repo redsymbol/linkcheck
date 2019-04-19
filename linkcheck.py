@@ -182,6 +182,13 @@ class Report:
         for url in sorted(self.bad_urls):
             print(url)
 
+class LazyRenderSorted:
+    def __init__(self, coll: typing.Iterator):
+        self.coll = coll
+
+    def __str__(self) -> str:
+        return str(sorted(self.coll))
+
 if __name__ == '__main__':
     args = get_args()
     links = Links()
@@ -193,7 +200,7 @@ if __name__ == '__main__':
         page = Page(url, domain)
         logging.debug('Checking url: %s', url)
         if page.url_is_valid():
-            logging.debug('found new urls: %s', list(page.urls(domain)))
+            logging.debug('found new urls: %s', LazyRenderSorted(page.urls(domain)))
             links.add_many(page.urls(domain))
         else:
             logging.debug('Invalid url: %s', url)
