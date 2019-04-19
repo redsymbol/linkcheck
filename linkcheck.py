@@ -91,12 +91,19 @@ class Page:
         yield from self.extract_urls(self.extract_raw_urls(self.response.text), self.domain)
     @staticmethod
     def extract_urls(raw_urls, domain):
+        def is_full_url(url):
+            return url.startswith('http://') or url.startswith('https://')
+        def is_skippable(url):
+            return url.lower().startswith('mailto:')
         for url in raw_urls:
-            if url.startswith('http://') or url.startswith('https://'):
+            if is_full_url(url):
                 if domain.url_in_domain(url):
                     yield url
             elif url.startswith('/'):
                 yield f'{domain.default_scheme}://{domain.netloc}{url}'
+            elif is_skippable(url):
+                logging.debug('Skipping url: %s', url)
+                continue
             else:
                 assert False, 'case not supported yet: ' + url
                     
