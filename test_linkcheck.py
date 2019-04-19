@@ -36,7 +36,7 @@ class TestDomain:
         assert not domain.url_in_domain('https://example.com/about')
         
 class TestPage:
-    def test_extract_raw_urls(self):
+    def test_extract_hrefs(self):
         text = '''
         <html><body>
         <p>Here is <a href="https://example.com/a">a link</a></p>
@@ -52,21 +52,34 @@ class TestPage:
             'https://example.com/a',
             'https://example.com/b',
             ]
-        assert expected == sorted(linkcheck.Page.extract_raw_urls(text))
+        assert expected == sorted(linkcheck.Page.extract_hrefs(text))
 
     def test_extract_urls(self):
         domain = linkcheck.Domain.from_url('https://example.com')
         page = linkcheck.Page('https://example.com/start', domain)
-        raw_urls = [
+        hrefs = [
             '/c',
             '/d',
             'https://notyourdomain.com/a',
             'https://example.com/b',
+            'x',
+            '#foo',
         ]
-        expected = [
+        expected = sorted([
             'https://example.com/b',
             'https://example.com/c',
             'https://example.com/d',
-        ]
-        actual = sorted(page.extract_urls(raw_urls))
+            'https://example.com/start/x',
+            'https://example.com/start#foo',
+        ])
+        actual = sorted(page.extract_urls(hrefs))
         assert expected == actual
+
+    def test_normalize_url(self):
+        domain = linkcheck.Domain.from_url('https://example.com')
+        page = linkcheck.Page('https://example.com/start#something', domain)
+
+        # skip mailto links
+        assert None == page.normalize_url('mailto:a@example.com')
+
+        

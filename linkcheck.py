@@ -90,27 +90,48 @@ class Page:
     
     def urls(self, domain):
         assert self.url_is_valid()
-        yield from self.extract_urls(self.extract_raw_urls(self.response.text))
+        yield from self.extract_urls(self.extract_hrefs(self.response.text))
 
-    def extract_urls(self, raw_urls):
-        def is_full_url(url):
-            return url.startswith('http://') or url.startswith('https://')
+    def normalize_url(self, href):
+        '''
+        Return a full URL from the href, based on the current page URL.
+
+        Returns None no such valid URL exists. Cases include:
+         - mailto: links
+        '''
         def is_skippable(url):
             return url.lower().startswith('mailto:')
-        for url in raw_urls:
-            if is_full_url(url):
-                if self.domain.url_in_domain(url):
-                    yield url
-            elif url.startswith('/'):
-                yield f'{self.domain.default_scheme}://{self.domain.netloc}{url}'
-            elif is_skippable(url):
-                logging.debug('Skipping url: %s', url)
+        if self.is_full_url(href):
+            return href
+        elif href.startswith('/'):
+            return f'{self.domain.default_scheme}://{self.domain.netloc}{href}'
+        elif is_skippable(href):
+            return None
+        elif href.startswith('#'):
+            return self.url + href
+        else:
+            if not self.url.endswith('/'):
+                href = '/' + href
+            return self.url + href
+
+    def extract_urls(self, hrefs):
+        for href in hrefs:
+            if self.is_full_url(href):
+                if self.domain.url_in_domain(href):
+                    yield href
                 continue
-            else:
-                assert False, 'case not supported yet: ' + url
-                    
+            url = self.normalize_url(href)
+            if url is None:
+                logging.debug('Skipping href: %s', href)
+                continue
+            yield url
+
     @staticmethod
-    def extract_raw_urls(text):
+    def is_full_url(url):
+        return url.startswith('http://') or url.startswith('https://')
+    
+    @staticmethod
+    def extract_hrefs(text):
         tree = lxml.html.document_fromstring(text)
         for elem in tree.cssselect('a'):
             if 'href' in elem.attrib:
