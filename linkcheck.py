@@ -99,9 +99,9 @@ class Page:
     @property
     def response(self) -> requests.Response:
         if self._resp is None:
-            logging.info('Fetching url: %s', url)
-            self._resp = requests.get(url)
-            logging.debug('Status code for url: %d %s', self._resp.status_code, url)
+            logging.info('Fetching url: %s', self.url)
+            self._resp = requests.get(self.url)
+            logging.debug('Status code for url: %d %s', self._resp.status_code, self.url)
         return self._resp
     
     def url_is_valid(self) -> bool:
@@ -195,11 +195,7 @@ class LazyRenderSorted:
     def __str__(self) -> str:
         return str(sorted(self.coll))
 
-if __name__ == '__main__':
-    args = get_args()
-    links = Links()
-    links.add(args.url)
-    domain = Domain.from_url(args.url)
+def main(domain, links):
     report = Report(links)
     while not links.empty():
         url = links.pop()
@@ -211,6 +207,14 @@ if __name__ == '__main__':
         else:
             logging.debug('Invalid url: %s', url)
             report.add_bad(url)
+    return report
+
+if __name__ == '__main__':
+    args = get_args()
+    links = Links()
+    links.add(args.url)
+    domain = Domain.from_url(args.url)
+    report = main(domain, links)
 
     report.print(args.verbose)
     sys.exit(report.exit_code())
