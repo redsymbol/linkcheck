@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 import os
 import logging
 import sys
+from dataclasses import dataclass
 
 import requests
 import lxml.html # type: ignore
@@ -175,8 +176,6 @@ class Report:
             self._print_verbose()
         else:
             self._print_quiet()
-    def exit_code(self) -> int:
-        return 0 if len(self.bad_urls) == 0 else 1
     def _print_quiet(self):
         for url in sorted(self.bad_urls):
             print(url)
@@ -195,26 +194,35 @@ class LazyRenderSorted:
     def __str__(self) -> str:
         return str(sorted(self.coll))
 
-def main(domain, links):
-    report = Report(links)
-    while not links.empty():
-        url = links.pop()
-        page = Page(url, domain)
-        logging.debug('Checking url: %s', url)
-        if page.url_is_valid():
-            logging.debug('found new urls: %s', LazyRenderSorted(page.urls(domain)))
-            links.add_many(page.urls(domain))
-        else:
-            logging.debug('Invalid url: %s', url)
-            report.add_bad(url)
-    return report
+@dataclass
+class Fetcher:
+    domain: Domain
+    links: Links
+    
+    def __post_init__(self):
+        self.report = Report(self.links)
+
+    def run(self) -> None:
+        while not self.links.empty():
+            url = self.links.pop()
+            page = Page(url, self.domain)
+            logging.debug('Checking url: %s', url)
+            if page.url_is_valid():
+                logging.debug('found new urls: %s', LazyRenderSorted(page.urls(self.domain)))
+                self.links.add_many(page.urls(self.domain))
+            else:
+                logging.debug('Invalid url: %s', url)
+                self.report.add_bad(url)
+
+    def exit_code(self) -> int:
+        return 0 if len(self.report.bad_urls) == 0 else 1
 
 if __name__ == '__main__':
     args = get_args()
     links = Links()
     links.add(args.url)
     domain = Domain.from_url(args.url)
-    report = main(domain, links)
-
-    report.print(args.verbose)
-    sys.exit(report.exit_code())
+    fetcher = Fetcher(domain, links)
+    fetcher.run()
+    fetcher.report.print(args.verbose)
+    sys.exit(fetcher.exit_code())
