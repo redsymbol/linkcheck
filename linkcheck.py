@@ -174,6 +174,7 @@ class Page:
 
 class Report:
     bad_urls: set
+    good_urls: set
     def __init__(self, links: Links):
         self.links = links
         self.bad_urls = set()
@@ -213,7 +214,7 @@ class Fetcher:
     def __post_init__(self):
         self.report = Report(self.links)
 
-    def run(self, limit: typing.Union[NoneType, int]) -> None:
+    def run(self, limit: typing.Union[None, int]) -> None:
         count = 0
         while not self.links.empty():
             url = self.links.pop()
