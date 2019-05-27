@@ -18,6 +18,12 @@ logging.basicConfig(
     level = os.environ.get('LINKCHECK_LOGLEVEL', 'WARNING'),
     )
 
+def positive_int(raw):
+    val = int(raw)
+    if val <= 0:
+        raise ValueError(f'Non-positive value {val}')
+    return val
+
 def get_args():
     parser = argparse.ArgumentParser(
         description='Check website for broken links',
@@ -44,6 +50,8 @@ healthy and broken links are printed out, under different headers.
                         help='Base URL to begin search')
     parser.add_argument('-v', '--verbose', default=False, action='store_true',
                         help='More verbose output')
+    parser.add_argument('--limit', default=None, type=positive_int,
+                        help='Stop crawling after this many URLs')
     return parser.parse_args()
 
 class Domain:
@@ -169,8 +177,11 @@ class Report:
     def __init__(self, links: Links):
         self.links = links
         self.bad_urls = set()
+        self.good_urls = set()
     def add_bad(self, url: str) -> None:
         self.bad_urls.add(url)
+    def add_good(self, url: str) -> None:
+        self.good_urls.add(url)
     def print(self, verbose: bool) -> None:
         if verbose:
             self._print_verbose()
@@ -181,7 +192,7 @@ class Report:
             print(url)
     def _print_verbose(self):
         print('GOOD LINKS:')
-        for url in sorted(self.links.all):
+        for url in sorted(self.good_urls):
             print(url)
         print('\nBAD LINKS:')
         for url in sorted(self.bad_urls):
@@ -202,17 +213,22 @@ class Fetcher:
     def __post_init__(self):
         self.report = Report(self.links)
 
-    def run(self) -> None:
+    def run(self, limit: typing.Union[NoneType, int]) -> None:
+        count = 0
         while not self.links.empty():
             url = self.links.pop()
+            count += 1
             page = Page(url, self.domain)
             logging.debug('Checking url: %s', url)
             if page.url_is_valid():
                 logging.debug('found new urls: %s', LazyRenderSorted(page.urls(self.domain)))
                 self.links.add_many(page.urls(self.domain))
+                self.report.add_good(url)
             else:
                 logging.debug('Invalid url: %s', url)
                 self.report.add_bad(url)
+            if limit and count >= limit:
+                break
 
     def exit_code(self) -> int:
         return 0 if len(self.report.bad_urls) == 0 else 1
@@ -223,6 +239,6 @@ if __name__ == '__main__':
     links.add(args.url)
     domain = Domain.from_url(args.url)
     fetcher = Fetcher(domain, links)
-    fetcher.run()
+    fetcher.run(args.limit)
     fetcher.report.print(args.verbose)
     sys.exit(fetcher.exit_code())
