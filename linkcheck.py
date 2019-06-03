@@ -95,23 +95,27 @@ class Links:
     def empty(self) -> bool:
         'True iff there are no unchecked links left'
         return len(self.unchecked) == 0
-    
+
 class Page:
     url: str
     domain: Domain
-    _resp: requests.Response
-    def __init__(self, url, domain):
+    response: requests.Response
+    def __init__(self, url, domain, response):
         assert domain.url_in_domain(url), (url, domain.netloc)
         self.url = url
         self.domain = domain
-        self._resp = None
-    @property
-    def response(self) -> requests.Response:
-        if self._resp is None:
-            logging.info('Fetching url: %s', self.url)
-            self._resp = requests.get(self.url)
-            logging.debug('Status code for url: %d %s', self._resp.status_code, self.url)
-        return self._resp
+        self.response = response
+
+    @classmethod
+    def tmp_make_page(cls, url, domain):
+        return cls(url, domain, cls.get_response(url, domain))
+
+    @staticmethod
+    def get_response(url, domain) -> requests.Response:
+        logging.info('Fetching url: %s', url)
+        response = requests.get(url)
+        logging.debug('Status code for url: %d %s', response.status_code, url)
+        return response
     
     def url_is_valid(self) -> bool:
         return self.response.status_code >= 200 and self.response.status_code < 300
@@ -219,7 +223,7 @@ class Fetcher:
         while not self.links.empty():
             url = self.links.pop()
             count += 1
-            page = Page(url, self.domain)
+            page = Page.tmp_make_page(url, self.domain)
             logging.debug('Checking url: %s', url)
             if page.url_is_valid():
                 logging.debug('found new urls: %s', LazyRenderSorted(page.urls(self.domain)))
