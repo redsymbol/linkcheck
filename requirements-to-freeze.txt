@@ -1,3 +1,6 @@
 lxml
 requests
 cssselect
+aiohttp
+cchardet
+aiodns
