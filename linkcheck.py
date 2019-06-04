@@ -238,8 +238,6 @@ class Engine(metaclass=abc.ABCMeta):
 
     def exit_code(self) -> int:
         return 0 if len(self.report.bad_urls) == 0 else 1
-        
-        
 
 if __name__ == '__main__':
     args = get_args()
