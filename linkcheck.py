@@ -9,6 +9,7 @@ import os
 import logging
 import sys
 from dataclasses import dataclass
+import abc
 
 import requests
 import lxml.html # type: ignore
@@ -116,7 +117,7 @@ class Page:
         response = requests.get(url)
         logging.debug('Status code for url: %d %s', response.status_code, url)
         return response
-    
+
     def url_is_valid(self) -> bool:
         return self.response.status_code >= 200 and self.response.status_code < 300
     
@@ -235,15 +236,29 @@ class Fetcher:
             if limit and count >= limit:
                 break
 
+class Engine(metaclass=abc.ABCMeta):
+    def __init__(self, root_url: str, limit: typing.Union[None, int]):
+        self.limit = limit
+        self.domain = Domain.from_url(root_url)
+        self.links = Links()
+        self.links.add(root_url)
+        self.fetcher = Fetcher(self.domain, self.links)
+
+    def run(self) -> None:
+        self.fetcher.run(args.limit)
+
+    @property
+    def report(self) -> Report:
+        return self.fetcher.report
+
     def exit_code(self) -> int:
         return 0 if len(self.report.bad_urls) == 0 else 1
+        
+        
 
 if __name__ == '__main__':
     args = get_args()
-    links = Links()
-    links.add(args.url)
-    domain = Domain.from_url(args.url)
-    fetcher = Fetcher(domain, links)
-    fetcher.run(args.limit)
-    fetcher.report.print(args.verbose)
-    sys.exit(fetcher.exit_code())
+    engine = Engine(args.url, args.limit)
+    engine.run()
+    engine.report.print(args.verbose)
+    sys.exit(engine.exit_code())
