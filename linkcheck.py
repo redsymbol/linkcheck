@@ -53,6 +53,8 @@ healthy and broken links are printed out, under different headers.
                         help='More verbose output')
     parser.add_argument('--limit', default=None, type=positive_int,
                         help='Stop crawling after this many URLs')
+    parser.add_argument('--engine', default=DEFAULT_ENGINE, choices=ENGINES.keys(),
+                        help='Use specific crawling engine')
     return parser.parse_args()
 
 class Domain:
@@ -211,7 +213,7 @@ class LazyRenderSorted:
     def __str__(self) -> str:
         return str(sorted(self.coll))
 
-class Engine(metaclass=abc.ABCMeta):
+class EngineBase(metaclass=abc.ABCMeta):
     def __init__(self, root_url: str, limit: typing.Union[None, int]):
         self.limit = limit
         self.domain = Domain.from_url(root_url)
@@ -219,6 +221,14 @@ class Engine(metaclass=abc.ABCMeta):
         self.links.add(root_url)
         self.report = Report(self.links)
 
+    @abc.abstractmethod
+    def run(self) -> None:
+        pass
+
+    def exit_code(self) -> int:
+        return 0 if len(self.report.bad_urls) == 0 else 1
+
+class SequentialEngine(EngineBase):
     def run(self) -> None:
         count = 0
         while not self.links.empty():
@@ -236,11 +246,15 @@ class Engine(metaclass=abc.ABCMeta):
             if self.limit and count >= self.limit:
                 break
 
-    def exit_code(self) -> int:
-        return 0 if len(self.report.bad_urls) == 0 else 1
+ENGINES = {
+    'sequential': SequentialEngine,
+    }
+DEFAULT_ENGINE = 'sequential'
+assert DEFAULT_ENGINE in ENGINES
 
 if __name__ == '__main__':
     args = get_args()
+    Engine = ENGINES[args.engine]
     engine = Engine(args.url, args.limit)
     engine.run()
     engine.report.print(args.verbose)
