@@ -211,15 +211,15 @@ class LazyRenderSorted:
     def __str__(self) -> str:
         return str(sorted(self.coll))
 
-@dataclass
-class Fetcher:
-    domain: Domain
-    links: Links
-    
-    def __post_init__(self):
+class Engine(metaclass=abc.ABCMeta):
+    def __init__(self, root_url: str, limit: typing.Union[None, int]):
+        self.limit = limit
+        self.domain = Domain.from_url(root_url)
+        self.links = Links()
+        self.links.add(root_url)
         self.report = Report(self.links)
 
-    def run(self, limit: typing.Union[None, int]) -> None:
+    def run(self) -> None:
         count = 0
         while not self.links.empty():
             url = self.links.pop()
@@ -233,23 +233,8 @@ class Fetcher:
             else:
                 logging.debug('Invalid url: %s', url)
                 self.report.add_bad(url)
-            if limit and count >= limit:
+            if self.limit and count >= self.limit:
                 break
-
-class Engine(metaclass=abc.ABCMeta):
-    def __init__(self, root_url: str, limit: typing.Union[None, int]):
-        self.limit = limit
-        self.domain = Domain.from_url(root_url)
-        self.links = Links()
-        self.links.add(root_url)
-        self.fetcher = Fetcher(self.domain, self.links)
-
-    def run(self) -> None:
-        self.fetcher.run(args.limit)
-
-    @property
-    def report(self) -> Report:
-        return self.fetcher.report
 
     def exit_code(self) -> int:
         return 0 if len(self.report.bad_urls) == 0 else 1
