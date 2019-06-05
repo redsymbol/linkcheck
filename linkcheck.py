@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import argparse
 import typing
 from urllib.parse import urlparse
@@ -13,6 +14,7 @@ import abc
 
 import requests
 import lxml.html # type: ignore
+import aiohttp
 
 logging.basicConfig(
     format='%(levelname)s:%(asctime)s:%(message)s',
@@ -99,7 +101,7 @@ class Links:
         'True iff there are no unchecked links left'
         return len(self.unchecked) == 0
 
-class Page:
+class PageBase:
     url: str
     domain: Domain
     response: requests.Response
@@ -179,6 +181,14 @@ class Page:
             if 'href' in elem.attrib:
                 yield elem.attrib['href']
 
+class SequentialPage(PageBase):
+    pass
+                
+class AsyncPage(PageBase):
+    pass
+
+Page = SequentialPage # temp hack for tests
+
 class Report:
     bad_urls: set
     good_urls: set
@@ -229,12 +239,46 @@ class EngineBase(metaclass=abc.ABCMeta):
         return 0 if len(self.report.bad_urls) == 0 else 1
 
 class SequentialEngine(EngineBase):
+    Page = SequentialPage
     def run(self) -> None:
         count = 0
         while not self.links.empty():
             url = self.links.pop()
             count += 1
-            page = Page.tmp_make_page(url, self.domain)
+            response = self.fetch_url(url, self.domain)
+            page = self.Page(url, self.domain, response)
+            logging.debug('Checking url: %s', url)
+            if page.url_is_valid():
+                logging.debug('found new urls: %s', LazyRenderSorted(page.urls(self.domain)))
+                self.links.add_many(page.urls(self.domain))
+                self.report.add_good(url)
+            else:
+                logging.debug('Invalid url: %s', url)
+                self.report.add_bad(url)
+            if self.limit and count >= self.limit:
+                break
+    @staticmethod
+    def fetch_url(url, domain) -> requests.Response:
+        logging.info('Fetching url: %s', url)
+        response = requests.get(url)
+        logging.debug('Status code for url: %d %s', response.status_code, url)
+        return response
+
+class AsyncEngine(EngineBase):
+    Page = AsyncPage
+    concurrency = 5
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        asyncio.get_event_loop()
+    def run(self) -> None:
+        count = 0
+        while not self.links.empty():
+            url = self.links.pop()
+            count += 1
+            #fetch_task = asyncio.create_task(self.fetch_url(url, self.domain))
+            #response = asyncio.run(fetch_task)
+            response = asyncio.run(self.fetch_url(url, self.domain))
+            page = self.Page(url, self.domain, response)
             logging.debug('Checking url: %s', url)
             if page.url_is_valid():
                 logging.debug('found new urls: %s', LazyRenderSorted(page.urls(self.domain)))
@@ -246,8 +290,17 @@ class SequentialEngine(EngineBase):
             if self.limit and count >= self.limit:
                 break
 
+    @staticmethod
+    async def fetch_url(url, domain) -> 'todo':
+        logging.info('Fetching url: %s', url)
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
+            response = await session.get(url)
+        logging.debug('Status code for url: %d %s', response.status, url)
+        return response
+
 ENGINES = {
-    'sequential': SequentialEngine,
+    'sequential' : SequentialEngine,
+    'async'      : AsyncEngine,
     }
 DEFAULT_ENGINE = 'sequential'
 assert DEFAULT_ENGINE in ENGINES
