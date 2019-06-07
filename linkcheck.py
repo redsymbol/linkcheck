@@ -111,6 +111,10 @@ class PageBase:
         self.domain = domain
         self.response = response
 
+    @classmethod
+    def tmp_make_page(cls, url, domain):
+        return cls(url, domain, cls.get_response(url, domain))
+
     @staticmethod
     def get_response(url, domain) -> requests.Response:
         logging.info('Fetching url: %s', url)
