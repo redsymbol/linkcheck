@@ -111,13 +111,6 @@ class Page:
         self.domain = domain
         self.response = response
 
-    @staticmethod
-    def get_response(url, domain) -> requests.Response:
-        logging.info('Fetching url: %s', url)
-        response = requests.get(url)
-        logging.debug('Status code for url: %d %s', response.status_code, url)
-        return response
-
     def url_is_valid(self) -> bool:
         return self.response.status_code >= 200 and self.response.status_code < 300
     
