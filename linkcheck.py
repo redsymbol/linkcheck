@@ -280,7 +280,7 @@ class AsyncEngine(EngineBase):
                 break
 
     @staticmethod
-    async def fetch_url(url, domain) -> 'todo':
+    async def fetch_url(url, domain):
         logging.info('Fetching url: %s', url)
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
             response = await session.get(url)
