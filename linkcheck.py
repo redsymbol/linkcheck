@@ -107,6 +107,7 @@ class Page:
     domain: Domain
     status: int
     text: str
+    
     def _post__init__(self):
         assert self.domain.url_in_domain(self.url), (self.url, self.domain.netloc)
 
@@ -172,6 +173,7 @@ class Page:
 class Report:
     bad_urls: set
     good_urls: set
+    
     def __init__(self, links: Links):
         self.links = links
         self.bad_urls = set()
@@ -218,12 +220,14 @@ class EngineBase(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def mk_page(self, url: str, response) -> Page:
         pass
+    
     def exit_code(self) -> int:
         return 0 if len(self.report.bad_urls) == 0 else 1
 
 class SequentialEngine(EngineBase):
     def mk_page(self, url: str, response) -> Page:
         return Page(url, self.domain, response.status_code, response.text)
+    
     def run(self) -> None:
         count = 0
         while not self.links.empty():
@@ -250,10 +254,13 @@ class SequentialEngine(EngineBase):
 
 class AsyncEngine(EngineBase):
     concurrency = 5
+    
     async def mk_page(self, url: str, response) -> Page:
         return Page(url, self.domain, response.status, await response.text())
+    
     def run(self) -> None:
         asyncio.run(self.run_async())
+        
     async def run_async(self) -> None:
         count = 0
         while not self.links.empty():
