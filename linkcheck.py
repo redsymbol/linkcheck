@@ -101,7 +101,7 @@ class Links:
         'True iff there are no unchecked links left'
         return len(self.unchecked) == 0
 
-class PageBase:
+class Page:
     url: str
     domain: Domain
     response: requests.Response
@@ -177,14 +177,6 @@ class PageBase:
             if 'href' in elem.attrib:
                 yield elem.attrib['href']
 
-class SequentialPage(PageBase):
-    pass
-                
-class AsyncPage(PageBase):
-    pass
-
-Page = SequentialPage # temp hack for tests
-
 class Report:
     bad_urls: set
     good_urls: set
@@ -235,14 +227,13 @@ class EngineBase(metaclass=abc.ABCMeta):
         return 0 if len(self.report.bad_urls) == 0 else 1
 
 class SequentialEngine(EngineBase):
-    Page = SequentialPage
     def run(self) -> None:
         count = 0
         while not self.links.empty():
             url = self.links.pop()
             count += 1
             response = self.fetch_url(url, self.domain)
-            page = self.Page(url, self.domain, response)
+            page = Page(url, self.domain, response)
             logging.debug('Checking url: %s', url)
             if page.url_is_valid():
                 logging.debug('found new urls: %s', LazyRenderSorted(page.urls(self.domain)))
@@ -261,7 +252,6 @@ class SequentialEngine(EngineBase):
         return response
 
 class AsyncEngine(EngineBase):
-    Page = AsyncPage
     concurrency = 5
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -274,7 +264,7 @@ class AsyncEngine(EngineBase):
             #fetch_task = asyncio.create_task(self.fetch_url(url, self.domain))
             #response = asyncio.run(fetch_task)
             response = asyncio.run(self.fetch_url(url, self.domain))
-            page = self.Page(url, self.domain, response)
+            page = Page(url, self.domain, response)
             logging.debug('Checking url: %s', url)
             if page.url_is_valid():
                 logging.debug('found new urls: %s', LazyRenderSorted(page.urls(self.domain)))
