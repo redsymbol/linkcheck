@@ -101,22 +101,21 @@ class Links:
         'True iff there are no unchecked links left'
         return len(self.unchecked) == 0
 
+@dataclass        
 class Page:
     url: str
     domain: Domain
-    response: requests.Response
-    def __init__(self, url, domain, response):
-        assert domain.url_in_domain(url), (url, domain.netloc)
-        self.url = url
-        self.domain = domain
-        self.response = response
+    status: int
+    text: str
+    def _post__init__(self):
+        assert self.domain.url_in_domain(self.url), (self.url, self.domain.netloc)
 
     def url_is_valid(self) -> bool:
-        return self.response.status_code >= 200 and self.response.status_code < 300
+        return self.status >= 200 and self.status < 300
     
     def urls(self, domain: Domain) -> typing.Generator[str, None, None]:
         assert self.url_is_valid()
-        yield from self.extract_urls(self.extract_hrefs(self.response.text))
+        yield from self.extract_urls(self.extract_hrefs(self.text))
 
     def normalize_url(self, href: str) -> typing.Optional[str]:
         '''
@@ -216,17 +215,22 @@ class EngineBase(metaclass=abc.ABCMeta):
     def run(self) -> None:
         pass
 
+    @abc.abstractmethod
+    def mk_page(self, url: str, response) -> Page:
+        pass
     def exit_code(self) -> int:
         return 0 if len(self.report.bad_urls) == 0 else 1
 
 class SequentialEngine(EngineBase):
+    def mk_page(self, url: str, response) -> Page:
+        return Page(url, self.domain, response.status_code, response.text)
     def run(self) -> None:
         count = 0
         while not self.links.empty():
             url = self.links.pop()
             count += 1
             response = self.fetch_url(url, self.domain)
-            page = Page(url, self.domain, response)
+            page = self.mk_page(url, response)
             logging.debug('Checking url: %s', url)
             if page.url_is_valid():
                 logging.debug('found new urls: %s', LazyRenderSorted(page.urls(self.domain)))
@@ -246,18 +250,17 @@ class SequentialEngine(EngineBase):
 
 class AsyncEngine(EngineBase):
     concurrency = 5
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        asyncio.get_event_loop()
+    async def mk_page(self, url: str, response) -> Page:
+        return Page(url, self.domain, response.status, await response.text())
     def run(self) -> None:
+        asyncio.run(self.run_async())
+    async def run_async(self) -> None:
         count = 0
         while not self.links.empty():
             url = self.links.pop()
             count += 1
-            #fetch_task = asyncio.create_task(self.fetch_url(url, self.domain))
-            #response = asyncio.run(fetch_task)
-            response = asyncio.run(self.fetch_url(url, self.domain))
-            page = Page(url, self.domain, response)
+            response = await self.fetch_url(url, self.domain)
+            page = await self.mk_page(url, response)
             logging.debug('Checking url: %s', url)
             if page.url_is_valid():
                 logging.debug('found new urls: %s', LazyRenderSorted(page.urls(self.domain)))

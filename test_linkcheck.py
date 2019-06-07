@@ -56,7 +56,7 @@ class TestPage:
 
     def test_extract_urls(self):
         domain = linkcheck.Domain.from_url('https://example.com')
-        page = linkcheck.Page('https://example.com/start', domain, None)
+        page = linkcheck.Page('https://example.com/start', domain, None, None)
         hrefs = [
             '/c',
             '/d',
@@ -76,7 +76,7 @@ class TestPage:
 
     def test_normalize_url(self):
         domain = linkcheck.Domain.from_url('https://example.com')
-        page = linkcheck.Page('https://example.com/start', domain, None)
+        page = linkcheck.Page('https://example.com/start', domain, None, None)
 
         # skip mailto links
         assert None == page.normalize_url('mailto:a@example.com')
