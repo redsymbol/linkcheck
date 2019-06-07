@@ -178,18 +178,23 @@ class Report:
         self.links = links
         self.bad_urls = set()
         self.good_urls = set()
+        
     def add_bad(self, url: str) -> None:
         self.bad_urls.add(url)
+        
     def add_good(self, url: str) -> None:
         self.good_urls.add(url)
+        
     def print(self, verbose: bool) -> None:
         if verbose:
             self._print_verbose()
         else:
             self._print_quiet()
+            
     def _print_quiet(self):
         for url in sorted(self.bad_urls):
             print(url)
+            
     def _print_verbose(self):
         print('GOOD LINKS:')
         for url in sorted(self.good_urls):
