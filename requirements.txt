@@ -9,7 +9,7 @@ cffi==1.12.3
 chardet==3.0.4
 cssselect==1.0.3
 idna==2.8
-lxml==4.3.3
+lxml==4.6.2
 more-itertools==7.0.0
 multidict==4.5.2
 mypy==0.701
