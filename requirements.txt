@@ -16,7 +16,7 @@ mypy==0.701
 mypy-extensions==0.4.1
 pluggy==0.9.0
 py==1.8.0
-pycares==3.0.0
+pycares==4.2.0
 pycparser==2.19
 pytest==4.4.1
 requests==2.21.0
